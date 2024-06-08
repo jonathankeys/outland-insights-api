@@ -1,0 +1,12 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Application" type="Application" factoryName="Application">
+    <envs>
+      <env name="PG_HOST" value="localhost" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="com.wildius.app.Application" />
+    <module name="wildius" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

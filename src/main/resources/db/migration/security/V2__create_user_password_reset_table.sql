@@ -1,0 +1,5 @@
+CREATE TABLE user_password_reset (
+	user_id VARCHAR(36) NOT NULL,
+	token VARCHAR(36) NOT NULL UNIQUE,
+	expiry_time TIMESTAMP WITH TIME ZONE NOT NULL
+);

@@ -1,0 +1,42 @@
+name: backend
+services:
+  database:
+    container_name: database
+    image: postgres:16.3-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_PASSWORD: mysecretpassword
+    networks:
+      - backend-network
+    volumes:
+      - database-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres" ]
+      interval: 1s
+      timeout: 1s
+      retries: 5
+
+  api:
+    container_name: backend-api
+    restart: always
+    image: api
+    build: .
+    ports:
+      - "7070:7070"
+    environment:
+      PG_HOST: database
+    networks:
+      - backend-network
+    depends_on:
+      database:
+        condition: service_healthy
+
+networks:
+  backend-network:
+    driver: bridge
+
+volumes:
+  database-volume:
+    name: "database-volume"
