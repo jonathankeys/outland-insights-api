@@ -6,10 +6,14 @@ from sqlalchemy import create_engine, text
 
 app = Flask(__name__)
 
-PG_HOST = os.environ.get('PG_HOST', 'localhost')
+PG_HOST = os.environ.get('PG_HOST')
+PG_DATABASE = os.environ.get('PG_DATABASE')
+PG_USER = os.environ.get('PG_USER')
+PG_PASSWORD = os.environ.get('PG_PASSWORD')
 
 engine = create_engine(
-    f'postgresql://postgres:mysecretpassword@{PG_HOST}:5432/postgres',
+    f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:5432/{PG_DATABASE}',
+    echo=True,
     pool_size=5,
     max_overflow=10,
     pool_timeout=30,

@@ -1,18 +1,23 @@
+x-pg-database: &pg-database postgres
+x-pg-password: &pg-password mysecretpassword
+x-pg-user: &pg-user postgres
 name: backend
 services:
   database:
     container_name: database
-    image: postgres:17.2-alpine
+    image: postgis/postgis:17-3.5-alpine
     restart: always
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: mysecretpassword
+      POSTGRES_DB: *pg-database
+      POSTGRES_USER: *pg-user
+      POSTGRES_PASSWORD: *pg-password
     networks:
       - backend-network
     volumes:
       - database-volume:/var/lib/postgresql/data
+      - ./init-postgis.sql:/docker-entrypoint-initdb.d/init-postgis.sql
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
       interval: 5s
@@ -28,6 +33,9 @@ services:
       - "5000:5000"
     environment:
       PG_HOST: database
+      PG_DATABASE: *pg-database
+      PG_USER: *pg-user
+      PG_PASSWORD: *pg-password
     networks:
       - backend-network
     depends_on:
