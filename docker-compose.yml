@@ -2,11 +2,12 @@ name: backend
 services:
   database:
     container_name: database
-    image: postgres:16.3-alpine
+    image: postgres:17.2-alpine
     restart: always
     ports:
       - "5432:5432"
     environment:
+      POSTGRES_USER: postgres
       POSTGRES_PASSWORD: mysecretpassword
     networks:
       - backend-network
@@ -14,8 +15,8 @@ services:
       - database-volume:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U postgres" ]
-      interval: 1s
-      timeout: 1s
+      interval: 5s
+      timeout: 5s
       retries: 5
 
   api:
@@ -24,7 +25,7 @@ services:
     image: api
     build: .
     ports:
-      - "7070:7070"
+      - "5000:5000"
     environment:
       PG_HOST: database
     networks:
