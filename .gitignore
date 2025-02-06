@@ -1,8 +1,2 @@
+.venv
 .idea
-target
-*.iml
-application*.log
-.classpath
-.factorypath
-.project
-.settings
