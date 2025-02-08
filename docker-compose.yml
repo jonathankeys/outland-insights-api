@@ -28,7 +28,9 @@ services:
     container_name: backend-api
     restart: always
     image: api
-    build: .
+    build:
+      context: .
+      dockerfile: api.dockerfile
     ports:
       - "5000:5000"
     environment:
