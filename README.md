@@ -6,6 +6,10 @@ This is a simple Flask web application that returns "Hello, World!" when accesse
 
 **Build & Run Services**
 ```
+docker compose build
+```
+
+```
 docker compose up -d
 ```
 

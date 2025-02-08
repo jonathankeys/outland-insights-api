@@ -1,7 +1,7 @@
 import os
 from contextlib import contextmanager
 
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from sqlalchemy import create_engine, text
 
 app = Flask(__name__)
@@ -29,18 +29,28 @@ def get_connection():
     finally:
         connection.close()
 
-@app.route('/health/shallow')
+@app.get('/health/shallow')
 def health_shallow():
-    return jsonify({"message": "ok"}, 200)
+    return jsonify({"message": "ok"}), 200
 
-@app.route('/health/deep')
+@app.get('/health/deep')
 def health_deep():
     with get_connection() as conn:
         try:
             result = conn.execute(text("SELECT NOW();"))
-            return jsonify({"db_time": result.fetchone()[0]}, 200)
+            return jsonify({"db_time": result.fetchone()[0]}), 200
         except Exception as e:
             return jsonify({"error": str(e)}, 500)
+
+@app.get('/routes')
+def routes():
+    with get_connection() as conn:
+        try:
+            result = conn.execute(text("SELECT * FROM routes;"))
+            return jsonify({"routes": result.fetchall()}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000)
