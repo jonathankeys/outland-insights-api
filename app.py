@@ -1,7 +1,14 @@
+import json
+import logging
 import os
+import sys
+import time
+import uuid
 from contextlib import contextmanager
+from functools import wraps
 
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, g
+from loguru import logger
 from sqlalchemy import create_engine, text
 
 from GpxExtractor import GpxExtractor
@@ -15,13 +22,102 @@ PG_PASSWORD = os.environ.get('PG_PASSWORD')
 
 engine = create_engine(
     f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:5432/{PG_DATABASE}',
-    echo=True,
     pool_size=5,
     max_overflow=10,
     pool_timeout=30,
     pool_recycle=1800,
     pool_pre_ping=True
 )
+
+
+def serialize(record):
+    params = {
+        "logger": "file_logger",
+        "timestamp": record["time"].timestamp(),
+        "level": record["level"].name,
+    }
+
+    if record["message"] != '':
+        params["message"] = record["message"]
+
+    log_param = record["extra"]
+    if log_param:
+        if "request_id" in log_param:
+            params["request_id"] = log_param["request_id"]
+        if "method" in log_param:
+            params["method"] = log_param["method"]
+        if "path" in log_param:
+            params["path"] = log_param["path"]
+        if "status" in log_param:
+            params["status"] = log_param["status"]
+        if "ip_address" in log_param:
+            params["ip_address"] = log_param["ip_address"]
+        if "time" in log_param:
+            params["time"] = log_param["time"]
+
+    return json.dumps(params)
+
+
+def patching(record):
+    record["extra"]["serialized"] = serialize(record)
+
+logger.remove(0)
+logger = logger.patch(patching)
+
+
+def filter_call_handlers(should_filter: bool):
+    return lambda record: should_filter == (record["function"] != "callHandlers")
+
+
+logger.add('logs/application/app_{time}.log', rotation='1 hour', retention='10 days', serialize=True, filter=filter_call_handlers(True))
+logger.add('logs/requests/requests_{time}.log', rotation='1 hour', retention='10 days', filter=filter_call_handlers(False))
+
+
+logger.add(sys.stderr, filter=lambda record: record["function"] not in ["callHandlers", "route_logger_wrapper"])
+
+
+class RequestLogHandler(logging.Handler):
+    def emit(self, record):
+        frame, depth = logging.currentframe(), 2
+        while frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).info(record.getMessage())
+
+logging.getLogger("werkzeug").handlers = [RequestLogHandler()]
+app.logger.disabled = True
+
+
+def route_logger(func):
+    @wraps(func)
+    def route_logger_wrapper(*args, **kwargs):
+        try:
+            start_time = time.time()
+            with logger.contextualize(request_id=g.get('request_id')):
+                response = func(*args, **kwargs)
+                endpoint_time = (time.time() - start_time) * 1000
+                logger.bind(method=request.method, path=request.path, time=endpoint_time).info('')
+                return response
+        except Exception as e:
+            logger.error('Failed to process request', e)
+            return jsonify({"error": "Internal Server Error"}), 500
+
+    return route_logger_wrapper
+
+
+@app.before_request
+def before_request():
+    request_id = request.headers.get('X-Request-ID')
+    if not request_id:
+        request_id = str(uuid.uuid4())
+    g.request_id = request_id
+
+
+@app.after_request
+def after_request(response):
+    response.headers['X-Request-ID'] = g.get('request_id')
+    return response
 
 
 @contextmanager
@@ -41,23 +137,28 @@ def get_gpx_converter():
     finally:
         pass
 
-
 @app.get('/health/shallow')
+@route_logger
 def health_shallow():
+    logger.info("Health check requested")
     return jsonify({"message": "ok"}), 200
 
 
 @app.get('/health/deep')
+@route_logger
 def health_deep():
     with get_connection() as conn:
         try:
+            logger.info("Deep health check requested")
             result = conn.execute(text("SELECT NOW();"))
             return jsonify({"db_time": result.fetchone()[0]}), 200
         except Exception as e:
-            return jsonify({"error": str(e)}, 500)
+            logger.error('Failed to connect to database', e)
+            return jsonify({"error": "Failed health check"}, 500)
 
 
 @app.get('/routes')
+@route_logger
 def get_routes():
     with get_connection() as conn:
         try:
@@ -84,14 +185,17 @@ def get_routes():
 
             return jsonify({'routes': route_list}), 200
         except Exception as e:
+            logger.error('Failed to get all routes from database', e)
             return jsonify({"error": 'Could not retrieve data'}), 500
 
 
 @app.post('/routes')
+@route_logger
 def create_route():
     data = request.get_json()
 
     if not data:
+        logger.info("No data provided")
         return jsonify({"error": "No data provided"}), 400
 
     name = data.get('name')
@@ -99,27 +203,28 @@ def create_route():
     dataset = data.get('dataset')
 
     if not description or not dataset or not name:
+        logger.info("Missing required fields: {}, {}, {}", name, description, dataset)
         return jsonify({"error": "Missing required fields"}), 400
 
     with get_gpx_converter() as gpx:
         try:
             dataset = gpx.extract(dataset)
         except Exception as e:
+            logger.error('Failed extract GPX data from input', e)
             return jsonify({"error": 'Could not convert provided dataset'}), 500
 
     with get_connection() as conn:
         try:
             route_id = insert_route(conn, name, description, dataset)
             conn.commit()
-            print(f"Inserted route with ID: {route_id}")
             return jsonify({"id": route_id}), 201
-
         except Exception as e:
-            print(e)
+            logger.error('Failed to insert route into database', e)
             return jsonify({"error": str(e)}), 500
 
 
 def insert_route(db_session, name, description, points):
+    logger.info('Inserting route with {} points', len(points))
     make_line_str = "ST_MakeLine(ARRAY["
     for i in range(len(points)):
         make_line_str += f"ST_MakePoint(:lon{i}, :lat{i}, :elev{i}, :time{i}),"
@@ -134,24 +239,17 @@ def insert_route(db_session, name, description, points):
         RETURNING id
     """
 
-    print(query)
-
-    # Create parameters dictionary
     params = {
         "name": name,
         "description": description
     }
 
-    # Add each point's parameters
     for i, (lon, lat, elevation, timestamp) in enumerate(points, 0):
         params[f"lon{i}"] = lon
         params[f"lat{i}"] = lat
         params[f"elev{i}"] = elevation
         params[f"time{i}"] = timestamp
 
-    print(params)
-
-    # Execute the query
     result = db_session.execute(text(query), params)
     return result.scalar()
 
