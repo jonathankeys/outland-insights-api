@@ -1,12 +1,12 @@
 import json
 import logging
-import os
 import sys
 import time
 import uuid
 from contextlib import contextmanager
 from functools import wraps
 
+from decouple import config
 from flask import Flask, jsonify, request, g
 from loguru import logger
 from sqlalchemy import create_engine, text
@@ -15,13 +15,14 @@ from GpxExtractor import GpxExtractor
 
 app = Flask(__name__)
 
-PG_HOST = os.environ.get('PG_HOST')
-PG_DATABASE = os.environ.get('PG_DATABASE')
-PG_USER = os.environ.get('PG_USER')
-PG_PASSWORD = os.environ.get('PG_PASSWORD')
+PG_HOST = config('PG_HOST')
+PG_PORT = config('PG_PORT')
+PG_DATABASE = config('PG_DATABASE')
+PG_USER = config('PG_USER')
+PG_PASSWORD = config('PG_PASSWORD')
 
 engine = create_engine(
-    f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:5432/{PG_DATABASE}',
+    f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}',
     pool_size=5,
     max_overflow=10,
     pool_timeout=30,
@@ -61,6 +62,7 @@ def serialize(record):
 def patching(record):
     record["extra"]["serialized"] = serialize(record)
 
+
 logger.remove(0)
 logger = logger.patch(patching)
 
@@ -69,9 +71,10 @@ def filter_call_handlers(should_filter: bool):
     return lambda record: should_filter == (record["function"] != "callHandlers")
 
 
-logger.add('logs/application/app_{time}.log', rotation='1 hour', retention='10 days', serialize=True, filter=filter_call_handlers(True))
-logger.add('logs/requests/requests_{time}.log', rotation='1 hour', retention='10 days', filter=filter_call_handlers(False))
-
+logger.add('logs/application/app_{time}.log', rotation='1 hour', retention='10 days', serialize=True,
+           filter=filter_call_handlers(True))
+logger.add('logs/requests/requests_{time}.log', rotation='1 hour', retention='10 days',
+           filter=filter_call_handlers(False))
 
 logger.add(sys.stderr, filter=lambda record: record["function"] not in ["callHandlers", "route_logger_wrapper"])
 
@@ -84,6 +87,7 @@ class RequestLogHandler(logging.Handler):
             depth += 1
 
         logger.opt(depth=depth, exception=record.exc_info).info(record.getMessage())
+
 
 logging.getLogger("werkzeug").handlers = [RequestLogHandler()]
 app.logger.disabled = True
@@ -136,6 +140,7 @@ def get_gpx_converter():
         yield converter
     finally:
         pass
+
 
 @app.get('/health/shallow')
 @route_logger
@@ -255,4 +260,4 @@ def insert_route(db_session, name, description, points):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=config('APP_PORT', cast=int))
