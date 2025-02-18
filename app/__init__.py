@@ -11,7 +11,7 @@ from flask import Flask, jsonify, request, g
 from loguru import logger
 from sqlalchemy import create_engine, text
 
-from GpxExtractor import GpxExtractor
+from app.extractors.GpxExtractor import GpxExtractor
 
 app = Flask(__name__)
 
