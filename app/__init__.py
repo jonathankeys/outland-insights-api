@@ -1,6 +1,3 @@
-import json
-import logging
-import sys
 import time
 import uuid
 from contextlib import contextmanager
@@ -8,9 +5,8 @@ from functools import wraps
 
 from decouple import config
 from flask import Flask, jsonify, request, g
-from loguru import logger
 from sqlalchemy import create_engine, text
-
+from app.configs.logger import logger
 from app.extractors.GpxExtractor import GpxExtractor
 
 app = Flask(__name__)
@@ -29,69 +25,6 @@ engine = create_engine(
     pool_recycle=1800,
     pool_pre_ping=True
 )
-
-
-def serialize(record):
-    params = {
-        "logger": "file_logger",
-        "timestamp": record["time"].timestamp(),
-        "level": record["level"].name,
-    }
-
-    if record["message"] != '':
-        params["message"] = record["message"]
-
-    log_param = record["extra"]
-    if log_param:
-        if "request_id" in log_param:
-            params["request_id"] = log_param["request_id"]
-        if "method" in log_param:
-            params["method"] = log_param["method"]
-        if "path" in log_param:
-            params["path"] = log_param["path"]
-        if "status" in log_param:
-            params["status"] = log_param["status"]
-        if "ip_address" in log_param:
-            params["ip_address"] = log_param["ip_address"]
-        if "time" in log_param:
-            params["time"] = log_param["time"]
-
-    return json.dumps(params)
-
-
-def patching(record):
-    record["extra"]["serialized"] = serialize(record)
-
-
-logger.remove(0)
-logger = logger.patch(patching)
-
-
-def filter_call_handlers(should_filter: bool):
-    return lambda record: should_filter == (record["function"] != "callHandlers")
-
-
-logger.add('logs/application/app_{time}.log', rotation='1 hour', retention='10 days', serialize=True,
-           filter=filter_call_handlers(True))
-logger.add('logs/requests/requests_{time}.log', rotation='1 hour', retention='10 days',
-           filter=filter_call_handlers(False))
-
-logger.add(sys.stderr, filter=lambda record: record["function"] not in ["callHandlers", "route_logger_wrapper"])
-
-
-class RequestLogHandler(logging.Handler):
-    def emit(self, record):
-        frame, depth = logging.currentframe(), 2
-        while frame.f_code.co_filename == logging.__file__:
-            frame = frame.f_back
-            depth += 1
-
-        logger.opt(depth=depth, exception=record.exc_info).info(record.getMessage())
-
-
-logging.getLogger("werkzeug").handlers = [RequestLogHandler()]
-app.logger.disabled = True
-
 
 def route_logger(func):
     @wraps(func)
@@ -261,3 +194,4 @@ def insert_route(db_session, name, description, points):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=config('APP_PORT', cast=int))
+    app.logger.disabled = True
