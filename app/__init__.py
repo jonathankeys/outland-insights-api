@@ -1,7 +1,4 @@
-import time
 import uuid
-from contextlib import contextmanager
-from functools import wraps
 
 from decouple import config
 from flask import Flask, jsonify, request, g
@@ -9,25 +6,10 @@ from sqlalchemy import text
 
 from app.configs import logger, engine
 from app.extractors.GpxExtractor import GpxExtractor
+from app.utils import route_logger, get_connection, get_gpx_converter
 
 app = Flask(__name__)
-
-def route_logger(func):
-    @wraps(func)
-    def route_logger_wrapper(*args, **kwargs):
-        try:
-            start_time = time.time()
-            with logger.contextualize(request_id=g.get('request_id')):
-                response = func(*args, **kwargs)
-                endpoint_time = (time.time() - start_time) * 1000
-                logger.bind(method=request.method, path=request.path, time=endpoint_time).info('')
-                return response
-        except Exception as e:
-            logger.error('Failed to process request', e)
-            return jsonify({"error": "Internal Server Error"}), 500
-
-    return route_logger_wrapper
-
+app.logger.disabled = True
 
 @app.before_request
 def before_request():
@@ -41,24 +23,6 @@ def before_request():
 def after_request(response):
     response.headers['X-Request-ID'] = g.get('request_id')
     return response
-
-
-@contextmanager
-def get_connection():
-    connection = engine.connect()
-    try:
-        yield connection
-    finally:
-        connection.close()
-
-
-@contextmanager
-def get_gpx_converter():
-    converter = GpxExtractor()
-    try:
-        yield converter
-    finally:
-        pass
 
 
 @app.get('/health/shallow')
@@ -180,4 +144,3 @@ def insert_route(db_session, name, description, points):
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=config('APP_PORT', cast=int))
-    app.logger.disabled = True
