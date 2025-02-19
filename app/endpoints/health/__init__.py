@@ -6,6 +6,7 @@ from app.utils import route_logger, get_connection
 
 health = Blueprint('health', __name__)
 
+
 @health.get('/shallow')
 @route_logger
 def health_shallow():

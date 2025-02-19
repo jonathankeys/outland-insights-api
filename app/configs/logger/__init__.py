@@ -6,6 +6,7 @@ from loguru import logger
 
 from app.configs.logger.RequestLogHandler import RequestLogHandler
 
+
 def serialize(record):
     params = {
         "logger": "file_logger",
@@ -33,11 +34,14 @@ def serialize(record):
 
     return json.dumps(params)
 
+
 def patching(record):
     record["extra"]["serialized"] = serialize(record)
 
+
 def filter_call_handlers(should_filter: bool):
     return lambda record: should_filter == (record["function"] != "callHandlers")
+
 
 def create_logger():
     logger.remove(0)
@@ -51,8 +55,10 @@ def create_logger():
 
     return logger
 
+
 def get_logger():
     return logger
+
 
 # Update Werkzeug logger to log through Loguru
 logging.getLogger("werkzeug").handlers = [RequestLogHandler()]

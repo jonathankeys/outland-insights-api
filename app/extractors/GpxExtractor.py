@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 from datetime import datetime
 import time
 
+
 class GpxExtractor:
     def __init__(self):
         pass

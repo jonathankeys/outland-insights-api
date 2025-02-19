@@ -2,6 +2,7 @@ import logging
 
 from loguru import logger
 
+
 class RequestLogHandler(logging.Handler):
     def emit(self, record):
         frame, depth = logging.currentframe(), 2

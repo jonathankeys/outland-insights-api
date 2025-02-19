@@ -1,0 +1,24 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: pylint
+        name: pylint
+        entry: pylint
+        language: system
+        types: [python]
+        args: [
+            "--rcfile=.pylintrc",
+            "--output-format=colorized",
+            "--fail-under=9.0"
+        ]
+    -   id: autopep8
+        name: autopep8
+        entry: autopep8
+        language: system
+        types: [python]
+        args: [
+            "--in-place",
+            "--aggressive",
+            "--aggressive",
+            "--max-line-length=120"
+        ]

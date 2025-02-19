@@ -6,13 +6,14 @@ from app.utils import route_logger, get_connection, get_gpx_converter
 
 routes = Blueprint('routes', __name__)
 
+
 @routes.get('/')
 @route_logger
 def get_routes():
     with get_connection() as conn:
         try:
             query = """
-                SELECT 
+                SELECT
                     id,
                     name,
                     description,
@@ -81,7 +82,7 @@ def insert_route(db_session, name, description, points):
     make_line_str += "])::geometry(MULTILINESTRINGZM, 4326)"
     query = f"""
         INSERT INTO routes (name, description, geo)
-        SELECT 
+        SELECT
             :name,
             :description,
             {make_line_str}

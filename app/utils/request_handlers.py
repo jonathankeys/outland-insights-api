@@ -2,6 +2,7 @@ import uuid
 
 from flask import g, request
 
+
 def register_request_handlers(app):
     @app.before_request
     def before_request():

@@ -1,0 +1,30 @@
+[MASTER]
+py-version=3.12
+load-plugins=pylint_flask,pylint_flask_sqlalchemy
+ignore=CVS
+persistent=yes
+
+[MESSAGES CONTROL]
+disable=C0111,  # allow no doc string
+       C0103,   # invalid-name
+       C0114,   # allow no module doc string
+       C0115,   # allow no class doc string
+       C0116,   # allow no function doc string
+       W0718    # allow broad exception catching
+
+[FORMAT]
+max-line-length=120
+indent-string='    '
+
+[BASIC]
+good-names=i,j,k,ex,Run,_,id,db
+
+[SIMILARITIES]
+min-similarity-lines=4
+ignore-comments=yes
+ignore-docstrings=yes
+ignore-imports=yes
+
+[TYPING]
+py-version=3.12
+runtime-typing=no
