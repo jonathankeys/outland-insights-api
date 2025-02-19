@@ -1,31 +1,18 @@
-import uuid
-
 from decouple import config
-from flask import Flask, request, g
+from flask import Flask
 
 from app.configs import logger, engine
 from app.endpoints import routes, health
 from app.extractors.GpxExtractor import GpxExtractor
-from app.utils import route_logger, get_connection, get_gpx_converter
+from app.utils import route_logger, get_connection, get_gpx_converter, register_request_handlers
 
 app = Flask(__name__)
 app.logger.disabled = True
+
+register_request_handlers(app)
+
 app.register_blueprint(health, url_prefix='/health')
 app.register_blueprint(routes, url_prefix='/routes')
-
-
-@app.before_request
-def before_request():
-    request_id = request.headers.get('X-Request-ID')
-    if not request_id:
-        request_id = str(uuid.uuid4())
-    g.request_id = request_id
-
-
-@app.after_request
-def after_request(response):
-    response.headers['X-Request-ID'] = g.get('request_id')
-    return response
 
 
 if __name__ == '__main__':
