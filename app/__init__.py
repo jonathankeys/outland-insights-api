@@ -5,26 +5,12 @@ from functools import wraps
 
 from decouple import config
 from flask import Flask, jsonify, request, g
-from sqlalchemy import create_engine, text
-from app.configs.logger import logger
+from sqlalchemy import text
+
+from app.configs import logger, engine
 from app.extractors.GpxExtractor import GpxExtractor
 
 app = Flask(__name__)
-
-PG_HOST = config('PG_HOST')
-PG_PORT = config('PG_PORT')
-PG_DATABASE = config('PG_DATABASE')
-PG_USER = config('PG_USER')
-PG_PASSWORD = config('PG_PASSWORD')
-
-engine = create_engine(
-    f'postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}',
-    pool_size=5,
-    max_overflow=10,
-    pool_timeout=30,
-    pool_recycle=1800,
-    pool_pre_ping=True
-)
 
 def route_logger(func):
     @wraps(func)
