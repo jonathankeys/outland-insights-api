@@ -3,6 +3,7 @@ py-version=3.12
 load-plugins=pylint_flask,pylint_flask_sqlalchemy
 ignore=CVS
 persistent=yes
+ignore-paths=alembic
 
 [MESSAGES CONTROL]
 disable=C0111,  # allow no doc string
@@ -24,7 +25,3 @@ min-similarity-lines=4
 ignore-comments=yes
 ignore-docstrings=yes
 ignore-imports=yes
-
-[TYPING]
-py-version=3.12
-runtime-typing=no
