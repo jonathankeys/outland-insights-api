@@ -9,8 +9,13 @@ from app.utils import route_logger, get_connection, get_gpx_converter, register_
 app = Flask(__name__)
 app.logger.disabled = True
 
+# Add handlers for each request
 register_request_handlers(app)
 
+# Do not allow file uploads over 16MB
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+
+# Add endpoints
 app.register_blueprint(health, url_prefix='/health')
 app.register_blueprint(routes, url_prefix='/routes')
 

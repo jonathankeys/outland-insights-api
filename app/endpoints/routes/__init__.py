@@ -1,10 +1,17 @@
 from flask import jsonify, request, Blueprint
 from sqlalchemy import text
+from werkzeug.utils import secure_filename
 
 from app.configs import logger
 from app.utils import route_logger, get_connection, get_gpx_converter
 
 routes = Blueprint('routes', __name__)
+
+ALLOWED_EXTENSIONS = {'gpx', 'txt'}
+
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
 @routes.get('/')
@@ -37,6 +44,43 @@ def get_routes():
         except Exception as e:
             logger.error('Failed to get all routes from database', e)
             return jsonify({"error": 'Could not retrieve data'}), 500
+
+
+@routes.post('/file')
+@route_logger
+def upload_route():
+    if 'files' not in request.files:
+        return {'error': 'No file(s) uploaded'}, 400
+
+    files = request.files.getlist('files')
+    if not files or files[0].filename == '':
+        return {'error': 'No file(s) uploaded'}, 400
+
+    with get_gpx_converter() as gpx, get_connection() as conn:
+        try:
+            for file in files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    logger.info('Filename: {}', filename)
+                    content = file.stream.read().decode('utf-8')
+                    dataset = ' '.join(line.strip() for line in content.splitlines() if line.strip())
+                    try:
+                        dataset = gpx.extract(dataset)
+                    except Exception as e:
+                        logger.error('Failed extract GPX data from input', e)
+                        return jsonify({"error": 'Could not convert provided dataset'}), 500
+                    try:
+                        insert_route(conn, 'name', 'description', dataset)
+                        conn.commit()
+                    except Exception as e:
+                        logger.error('Failed to insert route into database', e)
+                        return jsonify({"error": str(e)}), 500
+        except Exception as e:
+            logger.error('Failed to upload file(s)', e)
+            logger.error(e)
+            return {'error': 'Failed to upload file(s)'}, 500
+
+    return {'message': 'Success'}, 200
 
 
 @routes.post('/')
