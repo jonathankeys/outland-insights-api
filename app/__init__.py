@@ -2,7 +2,7 @@ from decouple import config
 from flask import Flask
 
 from app.configs import logger, engine
-from app.endpoints import routes, health
+from app.endpoints import routes, health, activities
 from app.extractors.GpxExtractor import GpxExtractor
 from app.utils import route_logger, get_connection, get_gpx_converter, register_request_handlers
 
@@ -18,6 +18,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 # Add endpoints
 app.register_blueprint(health, url_prefix='/health')
 app.register_blueprint(routes, url_prefix='/routes')
+app.register_blueprint(activities, url_prefix='/activities')
 
 
 if __name__ == '__main__':
