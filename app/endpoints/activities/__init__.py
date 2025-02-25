@@ -1,8 +1,10 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint
+from flask import jsonify
 from sqlalchemy import text
 
 from app.configs import logger
-from app.utils import get_connection
+from app.models import CreateActivityRequest, CreateActivityResponse
+from app.utils import get_connection, validate
 from app.utils import route_logger
 
 activities = Blueprint('activities', __name__)
@@ -45,68 +47,27 @@ def get_activities():
 
 @activities.post('/')
 @route_logger
-def create_activity():
+@validate(CreateActivityRequest)
+def create_activity(request: CreateActivityRequest):
     try:
-        data = request.get_json()
-
-        # Add validation library through #20
-        required_fields = ['title', 'time_started']
-        for field in required_fields:
-            if field not in data:
-                return jsonify({
-                    'error': 'Validation error',
-                    'message': f'Missing required field: {field}'
-                }), 400
-
-        if len(data['title']) < 3:
-            return jsonify({
-                'error': 'Validation error',
-                'message': 'Title must be at least 3 characters long'
-            }), 400
-
-        try:
-            time_started = data['time_started']
-            time_ended = data['time_ended'] if 'time_ended' in data and data['time_ended'] else None
-            if time_ended and time_ended <= time_started:
-                return jsonify({
-                    'error': 'Validation error',
-                    'message': 'End time must be after start time'
-                }), 400
-
-        except (ValueError, TypeError):
-            return jsonify({
-                'error': 'Validation error',
-                'message': 'Invalid datetime format. Please use ISO 8601 format'
-            }), 400
-
         with get_connection() as conn:
-            new_activity = conn.execute(text("""
+            query = text("""
                 INSERT INTO activity_log
                 (title, description, time_started, time_ended)
                 VALUES (:title, :description, :time_started, :time_ended)
                 RETURNING id, title, description, time_started, time_ended,
                           created_at, updated_at
-            """), {
-                "title": data['title'],
-                "description": data.get('description'),
-                "time_started": time_started,
-                "time_ended": time_ended
-            }).fetchone()
-
-            logger.info(f"New activity created: {new_activity}")
-            conn.commit()
-
+            """)
+            params = {
+                "title": request.title,
+                "description": request.description,
+                "time_started": request.time_started,
+                "time_ended": request.time_ended
+            }
+            db_result = conn.execute(query, params).fetchone()
             return jsonify({
                 'message': 'Activity created successfully',
-                'activity': {
-                    'id': new_activity[0],
-                    'title': new_activity[1],
-                    'description': new_activity[2],
-                    'time_started': new_activity[3].isoformat() if new_activity[3] else None,
-                    'time_ended': new_activity[4].isoformat() if new_activity[4] else None,
-                    'created_at': new_activity[5].isoformat() if new_activity[5] else None,
-                    'updated_at': new_activity[6].isoformat() if new_activity[6] else None
-                }
+                'activity': CreateActivityResponse(**db_result._mapping).model_dump()
             }), 201
 
     except Exception as e:
