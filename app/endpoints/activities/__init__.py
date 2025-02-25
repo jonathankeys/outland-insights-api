@@ -114,3 +114,40 @@ def create_activity():
             'error': 'Failed to create activity',
             'message': str(e)
         }), 500
+
+
+@activities.get('/<activity_id>/routes')
+@route_logger
+def get_activity_routes(activity_id):
+    try:
+        with get_connection() as conn:
+            result = conn.execute(text("""
+                SELECT
+                    r.id,
+                    r.name,
+                    r.description,
+                    ST_AsGeoJSON(r.geo)::json as geometry
+                FROM
+                    routes r
+                JOIN activity_routes ar ON
+                    ar.route_id = r.id
+                    AND ar.activity_id = :activity_id;
+            """), {"activity_id": activity_id})
+            fetched_results = result.fetchall()
+
+            route_list = []
+            for route in fetched_results:
+                route_dict = {
+                    'id': route[0],
+                    'name': route[1],
+                    'description': route[2],
+                    'geo': route[3]
+                }
+                route_list.append(route_dict)
+
+            return jsonify({'routes': route_list}), 200
+
+    except Exception as e:
+        logger.error(f'Failed to get all routes from database for activity_id={activity_id}', e)
+        logger.error(e)
+        return jsonify({"error": 'Could not retrieve data'}), 500
