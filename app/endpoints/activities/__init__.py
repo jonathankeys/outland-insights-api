@@ -3,7 +3,7 @@ from flask import jsonify
 from sqlalchemy import text
 
 from app.configs import logger
-from app.models import CreateActivityRequest, CreateActivityResponse
+from app.models import CreateActivityRequest, CreateActivityResponse, GetActivityResponse
 from app.utils import get_connection, validate
 from app.utils import route_logger
 
@@ -21,24 +21,19 @@ def get_activities():
                 FROM activity_log
                 ORDER BY created_at DESC
             """))
-            fetched_results = result.fetchall()
-
-            activities_list = [{
-                'id': activity[0],
-                'title': activity[1],
-                'description': activity[2],
-                'time_started': activity[3].isoformat() if activity[3] else None,
-                'time_ended': activity[4].isoformat() if activity[4] else None,
-                'created_at': activity[5].isoformat() if activity[5] else None,
-                'updated_at': activity[6].isoformat() if activity[6] else None
-            } for activity in fetched_results]
+            data = []
+            for result in result.mappings():
+                activity = GetActivityResponse(**result).model_dump()
+                data.append(activity)
 
             return jsonify({
-                'activities': activities_list,
-                'count': len(activities_list)
+                'data': data,
+                'count': len(data)
             }), 200
 
     except Exception as e:
+        logger.error('Failed to fetch all activities from database', e)
+        logger.error(e)
         return jsonify({
             'error': 'Failed to fetch activities',
             'message': str(e)
@@ -64,10 +59,10 @@ def create_activity(request: CreateActivityRequest):
                 "time_started": request.time_started,
                 "time_ended": request.time_ended
             }
-            db_result = conn.execute(query, params).fetchone()
+            result = conn.execute(query, params).mappings().first()
             return jsonify({
                 'message': 'Activity created successfully',
-                'activity': CreateActivityResponse(**db_result._mapping).model_dump()
+                'data': CreateActivityResponse(**result).model_dump()
             }), 201
 
     except Exception as e:

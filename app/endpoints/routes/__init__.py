@@ -3,6 +3,7 @@ from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
 from app.configs import logger
+from app.models import GetRoutesResponse
 from app.utils import route_logger, get_connection, get_gpx_converter
 
 routes = Blueprint('routes', __name__)
@@ -27,22 +28,19 @@ def get_routes():
                     ST_AsGeoJSON(geo)::json as geometry
                 FROM routes;
             """
-            result = conn.execute(text(query))
-            fetched_results = result.fetchall()
+            results = conn.execute(text(query))
+            data = []
+            for result in results.mappings():
+                activity = GetRoutesResponse(**result).model_dump()
+                data.append(activity)
 
-            route_list = []
-            for route in fetched_results:
-                route_dict = {
-                    'id': route[0],
-                    'name': route[1],
-                    'description': route[2],
-                    'geo': route[3]
-                }
-                route_list.append(route_dict)
-
-            return jsonify({'routes': route_list}), 200
+            return jsonify({
+                'data': data,
+                'count': len(data)
+            }), 200
         except Exception as e:
             logger.error('Failed to get all routes from database', e)
+            logger.error(e)
             return jsonify({"error": 'Could not retrieve data'}), 500
 
 
