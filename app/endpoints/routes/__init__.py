@@ -1,10 +1,11 @@
-from flask import jsonify, request, Blueprint
+from flask import jsonify, Blueprint
 from sqlalchemy import text
 from werkzeug.utils import secure_filename
 
 from app.configs import logger
-from app.models import GetRoutesResponse
-from app.utils import route_logger, get_connection, get_gpx_converter
+from app.models import (GetRoutesResponse, CreateRouteRequest, CreateRouteResponse,
+                        UploadRouteRequest, UploadRouteResponse)
+from app.utils import route_logger, get_connection, get_gpx_converter, validate
 
 routes = Blueprint('routes', __name__)
 
@@ -46,17 +47,12 @@ def get_routes():
 
 @routes.post('/file')
 @route_logger
-def upload_route():
-    if 'files' not in request.files:
-        return {'error': 'No file(s) uploaded'}, 400
-
-    files = request.files.getlist('files')
-    if not files or files[0].filename == '':
-        return {'error': 'No file(s) uploaded'}, 400
-
+@validate(UploadRouteRequest)
+def upload_route(request: UploadRouteRequest):
     with get_gpx_converter() as gpx, get_connection() as conn:
         try:
-            for file in files:
+            results = []
+            for file in request.files:
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
                     logger.info('Filename: {}', filename)
@@ -68,11 +64,16 @@ def upload_route():
                         logger.error('Failed extract GPX data from input', e)
                         return jsonify({"error": 'Could not convert provided dataset'}), 500
                     try:
-                        insert_route(conn, 'name', 'description', dataset)
-                        conn.commit()
+                        result = insert_route(conn, request.name, request.description, dataset)
+                        results.append(UploadRouteResponse(**result).model_dump())
                     except Exception as e:
                         logger.error('Failed to insert route into database', e)
                         return jsonify({"error": str(e)}), 500
+            return jsonify({
+                'message': 'Successfully uploaded route(s)',
+                'count': len(results),
+                'data': results
+            }), 201
         except Exception as e:
             logger.error('Failed to upload file(s)', e)
             logger.error(e)
@@ -83,33 +84,22 @@ def upload_route():
 
 @routes.post('/')
 @route_logger
-def create_route():
-    data = request.get_json()
-
-    if not data:
-        logger.info("No data provided")
-        return jsonify({"error": "No data provided"}), 400
-
-    name = data.get('name')
-    description = data.get('description')
-    dataset = data.get('dataset')
-
-    if not description or not dataset or not name:
-        logger.info("Missing required fields: {}, {}, {}", name, description, dataset)
-        return jsonify({"error": "Missing required fields"}), 400
-
+@validate(CreateRouteRequest)
+def create_route(request: CreateRouteRequest):
     with get_gpx_converter() as gpx:
         try:
-            dataset = gpx.extract(dataset)
+            dataset = gpx.extract(request.dataset)
         except Exception as e:
             logger.error('Failed extract GPX data from input', e)
             return jsonify({"error": 'Could not convert provided dataset'}), 500
 
     with get_connection() as conn:
         try:
-            route_id = insert_route(conn, name, description, dataset)
-            conn.commit()
-            return jsonify({"id": route_id}), 201
+            result = insert_route(conn, request.name, request.description, dataset)
+            return jsonify({
+                'message': 'Route created successfully',
+                'data': CreateRouteResponse(**result).model_dump()
+            }), 201
         except Exception as e:
             logger.error('Failed to insert route into database', e)
             return jsonify({"error": str(e)}), 500
@@ -128,7 +118,7 @@ def insert_route(db_session, name, description, points):
             :name,
             :description,
             {make_line_str}
-        RETURNING id
+        RETURNING id, name, description, ST_AsGeoJSON(geo)::json as geometry
     """
 
     params = {
@@ -143,4 +133,4 @@ def insert_route(db_session, name, description, points):
         params[f"time{i}"] = timestamp
 
     result = db_session.execute(text(query), params)
-    return result.scalar()
+    return result.mappings().first()

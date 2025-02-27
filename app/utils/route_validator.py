@@ -12,6 +12,8 @@ def validate(model) -> Callable:
         def decorated_function(*args, **kwargs):
             try:
                 request_data = request.get_json() if request.is_json else request.form.to_dict()
+                if 'files' in request.files:
+                    request_data['files'] = request.files.getlist('files')
                 validated_data = model(**request_data)
                 return f(validated_data, *args, **kwargs)
             except ValidationError as e:

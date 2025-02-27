@@ -1,9 +1,8 @@
-from flask import Blueprint
-from flask import jsonify
+from flask import Blueprint, jsonify
 from sqlalchemy import text
 
 from app.configs import logger
-from app.models import CreateActivityRequest, CreateActivityResponse, GetActivityResponse
+from app.models import CreateActivityRequest, CreateActivityResponse, GetActivityResponse, GetRoutesResponse
 from app.utils import get_connection, validate
 from app.utils import route_logger
 
@@ -77,7 +76,7 @@ def create_activity(request: CreateActivityRequest):
 def get_activity_routes(activity_id):
     try:
         with get_connection() as conn:
-            result = conn.execute(text("""
+            results = conn.execute(text("""
                 SELECT
                     r.id,
                     r.name,
@@ -89,19 +88,15 @@ def get_activity_routes(activity_id):
                     ar.route_id = r.id
                     AND ar.activity_id = :activity_id;
             """), {"activity_id": activity_id})
-            fetched_results = result.fetchall()
+            data = []
+            for result in results.mappings():
+                activity = GetRoutesResponse(**result).model_dump()
+                data.append(activity)
 
-            route_list = []
-            for route in fetched_results:
-                route_dict = {
-                    'id': route[0],
-                    'name': route[1],
-                    'description': route[2],
-                    'geo': route[3]
-                }
-                route_list.append(route_dict)
-
-            return jsonify({'routes': route_list}), 200
+            return jsonify({
+                'data': data,
+                'count': len(data)
+            }), 200
 
     except Exception as e:
         logger.error(f'Failed to get all routes from database for activity_id={activity_id}', e)
