@@ -9,7 +9,7 @@ class GpxExtractor:
 
     @staticmethod
     def parse_iso_time(time_str):
-        dt = datetime.strptime(time_str, "%Y-%m-%dT%H:%M:%SZ")
+        dt = datetime.strptime(time_str, '%Y-%m-%dT%H:%M:%SZ')
         return time.mktime(dt.timetuple())
 
     def extract(self, gpx_string):

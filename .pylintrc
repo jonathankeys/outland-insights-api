@@ -16,6 +16,9 @@ disable=C0111,  # allow no doc string
 [FORMAT]
 max-line-length=120
 indent-string='    '
+string-quote=single
+triple-quote=single
+docstring-quote=single
 
 [BASIC]
 good-names=i,j,k,ex,Run,_,id,db

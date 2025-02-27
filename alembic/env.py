@@ -32,12 +32,12 @@ def get_database_url():
     # Need to encode the password, else it will fail if there are % in the password
     password = quote_plus(env('PG_PASSWORD')).replace('%', '%%')
     return (
-        f"postgresql+psycopg2://"
-        f"{env('PG_USER')}:"
-        f"{password}@"
-        f"{env('PG_HOST', 'localhost')}:"
-        f"{env('PG_PORT')}/"
-        f"{env('PG_DATABASE')}"
+        f'postgresql+psycopg2://'
+        f'{env('PG_USER')}:'
+        f'{password}@'
+        f'{env('PG_HOST', 'localhost')}:'
+        f'{env('PG_PORT')}/'
+        f'{env('PG_DATABASE')}'
     )
 
 
@@ -56,12 +56,12 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option('sqlalchemy.url')
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
-        dialect_opts={"paramstyle": "named"},
+        dialect_opts={'paramstyle': 'named'},
     )
 
     with context.begin_transaction():
@@ -77,7 +77,7 @@ def run_migrations_online() -> None:
     """
     connectable = engine_from_config(
         config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
+        prefix='sqlalchemy.',
         poolclass=pool.NullPool,
     )
 

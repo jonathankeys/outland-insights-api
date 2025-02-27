@@ -21,14 +21,14 @@ def allowed_file(filename):
 def get_routes():
     with get_connection() as conn:
         try:
-            query = """
+            query = '''
                 SELECT
                     id,
                     name,
                     description,
                     ST_AsGeoJSON(geo)::json as geometry
                 FROM routes;
-            """
+            '''
             results = conn.execute(text(query))
             data = []
             for result in results.mappings():
@@ -42,7 +42,7 @@ def get_routes():
         except Exception as e:
             logger.error('Failed to get all routes from database', e)
             logger.error(e)
-            return jsonify({"error": 'Could not retrieve data'}), 500
+            return jsonify({'error': 'Could not retrieve data'}), 500
 
 
 @routes.post('/file')
@@ -55,20 +55,19 @@ def upload_route(request: UploadRouteRequest):
             for file in request.files:
                 if file and allowed_file(file.filename):
                     filename = secure_filename(file.filename)
-                    logger.info('Filename: {}', filename)
                     content = file.stream.read().decode('utf-8')
                     dataset = ' '.join(line.strip() for line in content.splitlines() if line.strip())
                     try:
                         dataset = gpx.extract(dataset)
                     except Exception as e:
                         logger.error('Failed extract GPX data from input', e)
-                        return jsonify({"error": 'Could not convert provided dataset'}), 500
+                        return jsonify({'error': 'Could not convert provided dataset'}), 500
                     try:
                         result = insert_route(conn, request.name, request.description, dataset)
                         results.append(UploadRouteResponse(**result).model_dump())
                     except Exception as e:
                         logger.error('Failed to insert route into database', e)
-                        return jsonify({"error": str(e)}), 500
+                        return jsonify({'error': str(e)}), 500
             return jsonify({
                 'message': 'Successfully uploaded route(s)',
                 'count': len(results),
@@ -78,8 +77,6 @@ def upload_route(request: UploadRouteRequest):
             logger.error('Failed to upload file(s)', e)
             logger.error(e)
             return {'error': 'Failed to upload file(s)'}, 500
-
-    return {'message': 'Success'}, 200
 
 
 @routes.post('/')
@@ -91,7 +88,7 @@ def create_route(request: CreateRouteRequest):
             dataset = gpx.extract(request.dataset)
         except Exception as e:
             logger.error('Failed extract GPX data from input', e)
-            return jsonify({"error": 'Could not convert provided dataset'}), 500
+            return jsonify({'error': 'Could not convert provided dataset'}), 500
 
     with get_connection() as conn:
         try:
@@ -102,35 +99,35 @@ def create_route(request: CreateRouteRequest):
             }), 201
         except Exception as e:
             logger.error('Failed to insert route into database', e)
-            return jsonify({"error": str(e)}), 500
+            return jsonify({'error': str(e)}), 500
 
 
 def insert_route(db_session, name, description, points):
     logger.info('Inserting route with {} points', len(points))
-    make_line_str = "ST_MakeLine(ARRAY["
+    make_line_str = 'ST_MakeLine(ARRAY['
     for i in range(len(points)):
-        make_line_str += f"ST_MakePoint(:lon{i}, :lat{i}, :elev{i}, :time{i}),"
+        make_line_str += f'ST_MakePoint(:lon{i}, :lat{i}, :elev{i}, :time{i}),'
     make_line_str = make_line_str[:-1]
-    make_line_str += "])::geometry(MULTILINESTRINGZM, 4326)"
-    query = f"""
+    make_line_str += '])::geometry(MULTILINESTRINGZM, 4326)'
+    query = f'''
         INSERT INTO routes (name, description, geo)
         SELECT
             :name,
             :description,
             {make_line_str}
         RETURNING id, name, description, ST_AsGeoJSON(geo)::json as geometry
-    """
+    '''
 
     params = {
-        "name": name,
-        "description": description
+        'name': name,
+        'description': description
     }
 
     for i, (lon, lat, elevation, timestamp) in enumerate(points, 0):
-        params[f"lon{i}"] = lon
-        params[f"lat{i}"] = lat
-        params[f"elev{i}"] = elevation
-        params[f"time{i}"] = timestamp
+        params[f'lon{i}'] = lon
+        params[f'lat{i}'] = lat
+        params[f'elev{i}'] = elevation
+        params[f'time{i}'] = timestamp
 
     result = db_session.execute(text(query), params)
     return result.mappings().first()

@@ -19,6 +19,5 @@ repos:
         args: [
             "--in-place",
             "--aggressive",
-            "--aggressive",
             "--max-line-length=120"
         ]
