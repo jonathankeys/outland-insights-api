@@ -1,6 +1,5 @@
 from flask import jsonify, Blueprint
 from sqlalchemy import text
-from werkzeug.utils import secure_filename
 
 from app.configs import logger
 from app.models import (GetRoutesResponse, CreateRouteRequest, CreateRouteResponse,
@@ -40,9 +39,10 @@ def get_routes():
                 'count': len(data)
             }), 200
         except Exception as e:
-            logger.error('Failed to get all routes from database', e)
-            logger.error(e)
-            return jsonify({'error': 'Could not retrieve data'}), 500
+            logger.error('Failed to get all routes', e)
+            return jsonify({
+                'error': 'Error getting routes'
+            }), 500
 
 
 @routes.post('/file')
@@ -54,29 +54,33 @@ def upload_route(request: UploadRouteRequest):
             results = []
             for file in request.files:
                 if file and allowed_file(file.filename):
-                    filename = secure_filename(file.filename)
                     content = file.stream.read().decode('utf-8')
                     dataset = ' '.join(line.strip() for line in content.splitlines() if line.strip())
                     try:
                         dataset = gpx.extract(dataset)
                     except Exception as e:
-                        logger.error('Failed extract GPX data from input', e)
-                        return jsonify({'error': 'Could not convert provided dataset'}), 500
+                        logger.error('Failed extract GPX data from input, request={}', request, e)
+                        return jsonify({
+                            'error': 'Could not convert provided dataset into valid format'
+                        }), 500
                     try:
                         result = insert_route(conn, request.name, request.description, dataset)
                         results.append(UploadRouteResponse(**result).model_dump())
                     except Exception as e:
-                        logger.error('Failed to insert route into database', e)
-                        return jsonify({'error': str(e)}), 500
+                        logger.error('Failed to insert route into database, {} files processed successfully. Input={}',
+                                     len(results), request, e)
+                        return jsonify({
+                            'error': 'Error uploading file(s)'
+                        }), 500
             return jsonify({
-                'message': 'Successfully uploaded route(s)',
                 'count': len(results),
                 'data': results
             }), 201
         except Exception as e:
-            logger.error('Failed to upload file(s)', e)
-            logger.error(e)
-            return {'error': 'Failed to upload file(s)'}, 500
+            logger.error('Failed to upload file(s), input={}', request, e)
+            return jsonify({
+                'error': 'Error uploading file(s)'
+            }), 500
 
 
 @routes.post('/')
@@ -87,19 +91,22 @@ def create_route(request: CreateRouteRequest):
         try:
             dataset = gpx.extract(request.dataset)
         except Exception as e:
-            logger.error('Failed extract GPX data from input', e)
-            return jsonify({'error': 'Could not convert provided dataset'}), 500
+            logger.error('Failed extract GPX data from input, request={}', request, e)
+            return jsonify({
+                'error': 'Could not convert provided dataset into valid format'
+            }), 500
 
     with get_connection() as conn:
         try:
             result = insert_route(conn, request.name, request.description, dataset)
             return jsonify({
-                'message': 'Route created successfully',
                 'data': CreateRouteResponse(**result).model_dump()
             }), 201
         except Exception as e:
-            logger.error('Failed to insert route into database', e)
-            return jsonify({'error': str(e)}), 500
+            logger.error('Failed to insert route, input={}', request, e)
+            return jsonify({
+                'error': 'Error uploading route'
+            }), 500
 
 
 def insert_route(db_session, name, description, points):

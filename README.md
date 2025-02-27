@@ -1,8 +1,28 @@
 # Application
 
-This is a simple Flask web application that returns "Hello, World!" when accessed.
+Outland Insights is an application which handles the storage, retrieval, authentication, authorization, and 
+analytics of GPS routes.
 
-### Running the Application
+The goal is to provide a simple interface to interact with GPS routes to power use cases left up to the customer, 
+whether building their own analytics views for the frontend or to just store and retrieve their data.
+
+## Tenets
+**Uncover Meaningful Insights**
+We should always be looking to spot new trends across multiple routes and providing the data for new patterns and 
+insights to be uncovered.
+
+**Access is Secure and Focused**
+Analytics are done at the owner and organization level, and accessible by those who have access to them. Privacy and 
+proper data boundaries are built into the way we access the data.
+
+**Flexible Data Access**
+Users should be able to retrieve their data in widely supported formats, making it easy to use with different tools 
+and libraries, and adapt to new types of analytics.
+
+**Clear & Actionable Insights**
+Data should be easy to interpret, so users can quickly understand what’s happening and put insights to good use.
+
+### Building and Running the Application
 
 **Update environment variables**
 ```

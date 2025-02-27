@@ -17,10 +17,9 @@ def validate(model) -> Callable:
                 validated_data = model(**request_data)
                 return f(validated_data, *args, **kwargs)
             except ValidationError as e:
-                logger.error('Validation error: {}', e)
+                logger.error('Validation errors: {}', e.error(), e)
                 return jsonify({
-                    'error': 'Validation of input failed.',
-                    'message': e.errors()
+                    'error': 'Invalid input',
                 }), 400
         return decorated_function
     return decorator

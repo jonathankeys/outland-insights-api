@@ -45,13 +45,14 @@ def filter_call_handlers(should_filter: bool):
 
 def create_logger():
     logger.remove(0)
+    # STDERR logger should be before adding logger patch to ensure errors are properly printed to terminal
+    logger.add(sys.stderr, filter=lambda record: record['function'] not in ['callHandlers', 'route_logger_wrapper'])
+
     logger.patch(patching)
     logger.add('logs/application/app_{time}.log', rotation='1 hour', retention='10 days', serialize=True,
                filter=filter_call_handlers(True))
     logger.add('logs/requests/requests_{time}.log', rotation='1 hour', retention='10 days',
                filter=filter_call_handlers(False))
-
-    logger.add(sys.stderr, filter=lambda record: record['function'] not in ['callHandlers', 'route_logger_wrapper'])
 
     return logger
 

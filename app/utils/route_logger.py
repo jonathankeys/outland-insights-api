@@ -18,6 +18,8 @@ def route_logger(func):
                 return response
         except Exception as e:
             logger.error('Failed to process request', e)
-            return jsonify({'error': 'Internal Server Error'}), 500
+            return jsonify({
+                'error': 'Internal Server Error'
+            }), 500
 
     return route_logger_wrapper

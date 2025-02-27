@@ -31,11 +31,9 @@ def get_activities():
             }), 200
 
     except Exception as e:
-        logger.error('Failed to fetch all activities from database', e)
-        logger.error(e)
+        logger.error('Failed to fetch all activities', e)
         return jsonify({
-            'error': 'Failed to fetch activities',
-            'message': str(e)
+            'error': 'Error retrieving activities',
         }), 500
 
 
@@ -60,14 +58,13 @@ def create_activity(request: CreateActivityRequest):
             }
             result = conn.execute(query, params).mappings().first()
             return jsonify({
-                'message': 'Activity created successfully',
                 'data': CreateActivityResponse(**result).model_dump()
             }), 201
 
     except Exception as e:
+        logger.error('Failed to create activity, input={}', request, e)
         return jsonify({
-            'error': 'Failed to create activity',
-            'message': str(e)
+            'error': 'Error creating activity',
         }), 500
 
 
@@ -100,5 +97,6 @@ def get_activity_routes(activity_id):
 
     except Exception as e:
         logger.error(f'Failed to get all routes from database for activity_id={activity_id}', e)
-        logger.error(e)
-        return jsonify({'error': 'Could not retrieve data'}), 500
+        return jsonify({
+            'error': 'Error retrieving routes for activity'
+        }), 500

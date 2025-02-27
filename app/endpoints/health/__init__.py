@@ -11,7 +11,9 @@ health = Blueprint('health', __name__)
 @route_logger
 def health_shallow():
     logger.info('Health check requested')
-    return jsonify({'message': 'ok'}), 200
+    return jsonify({
+        'message': 'ok'
+    }), 200
 
 
 @health.get('/deep')
@@ -21,7 +23,11 @@ def health_deep():
         try:
             logger.info('Deep health check requested')
             result = conn.execute(text('SELECT NOW();'))
-            return jsonify({'db_time': result.fetchone()[0]}), 200
+            return jsonify({
+                'message': f'database time is {result.fetchone()[0]}'
+            }), 200
         except Exception as e:
             logger.error('Failed to connect to database', e)
-            return jsonify({'error': 'Failed health check'}, 500)
+            return jsonify({
+                'error': 'Failed health check'
+            }, 500)
