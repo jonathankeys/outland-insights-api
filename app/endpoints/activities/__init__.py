@@ -102,6 +102,38 @@ def get_activity_routes(activity_id):
         }), 500
 
 
+@activities.get('/<activity_id>')
+@route_logger
+def get_activity(activity_id):
+    try:
+        with get_connection() as conn:
+            result = conn.execute(text('''
+                SELECT id, title, description, time_started, time_ended,
+                       created_at, updated_at
+                FROM activity_log
+                WHERE id = :activity_id
+                ORDER BY created_at DESC
+            '''), {
+                'activity_id': activity_id,
+            })
+
+            if result.rowcount > 0:
+                data = result.mappings().first()
+                return jsonify({
+                    'data': GetActivityResponse(**data).model_dump(),
+                }), 200
+            else:
+                return jsonify({
+                    'error': 'Activity not found'
+                }), 404
+
+    except Exception as e:
+        logger.error(f'Failed to get Activity from database for activity_id={activity_id}', e)
+        return jsonify({
+            'error': 'Error retrieving Activity'
+        }), 500
+
+
 @activities.get('/<activity_id>/routes/<route_id>')
 @route_logger
 def get_activity_route(activity_id, route_id):
@@ -137,7 +169,6 @@ def get_activity_route(activity_id, route_id):
 
     except Exception as e:
         logger.error(f'Failed to get route from database for activity_id={activity_id} and route_id={route_id}', e)
-        logger.error(e)
         return jsonify({
             'error': 'Error retrieving route for activity'
         }), 500
