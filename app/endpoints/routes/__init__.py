@@ -2,7 +2,7 @@ from flask import jsonify, Blueprint
 from sqlalchemy import text
 
 from app.configs import logger
-from app.models import (GetRoutesResponse, CreateRouteRequest, CreateRouteResponse,
+from app.models import (GetRouteResponse, CreateRouteRequest, CreateRouteResponse,
                         UploadRouteRequest, UploadRouteResponse)
 from app.utils import route_logger, get_connection, get_gpx_converter, validate
 
@@ -31,7 +31,7 @@ def get_routes():
             results = conn.execute(text(query))
             data = []
             for result in results.mappings():
-                activity = GetRoutesResponse(**result).model_dump()
+                activity = GetRouteResponse(**result).model_dump()
                 data.append(activity)
 
             return jsonify({

@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from sqlalchemy import text
 
 from app.configs import logger
-from app.models import CreateActivityRequest, CreateActivityResponse, GetActivityResponse, GetRoutesResponse
+from app.models import CreateActivityRequest, CreateActivityResponse, GetActivityResponse, GetRouteResponse
 from app.utils import get_connection, validate
 from app.utils import route_logger
 
@@ -83,11 +83,11 @@ def get_activity_routes(activity_id):
                     routes r
                 JOIN activity_routes ar ON
                     ar.route_id = r.id
-                    AND ar.activity_id = :activity_id;
+                WHERE ar.activity_id = :activity_id;
             '''), {'activity_id': activity_id})
             data = []
             for result in results.mappings():
-                activity = GetRoutesResponse(**result).model_dump()
+                activity = GetRouteResponse(**result).model_dump()
                 data.append(activity)
 
             return jsonify({
@@ -99,4 +99,45 @@ def get_activity_routes(activity_id):
         logger.error(f'Failed to get all routes from database for activity_id={activity_id}', e)
         return jsonify({
             'error': 'Error retrieving routes for activity'
+        }), 500
+
+
+@activities.get('/<activity_id>/routes/<route_id>')
+@route_logger
+def get_activity_route(activity_id, route_id):
+    try:
+        with get_connection() as conn:
+            params = {
+                'activity_id': activity_id,
+                'route_id': route_id
+            }
+            result = conn.execute(text('''
+                SELECT
+                    r.id,
+                    r.name,
+                    r.description,
+                    ST_AsGeoJSON(r.geo)::json as geometry
+                FROM
+                    routes r
+                JOIN activity_routes ar ON
+                    ar.route_id = r.id
+                WHERE ar.activity_id = :activity_id
+                    AND ar.route_id = :route_id;
+            '''), params)
+
+            if result.rowcount > 0:
+                data = result.mappings().first()
+                return jsonify({
+                    'data': GetRouteResponse(**data).model_dump(),
+                }), 200
+            else:
+                return jsonify({
+                    'error': 'Route not found'
+                }), 404
+
+    except Exception as e:
+        logger.error(f'Failed to get route from database for activity_id={activity_id} and route_id={route_id}', e)
+        logger.error(e)
+        return jsonify({
+            'error': 'Error retrieving route for activity'
         }), 500

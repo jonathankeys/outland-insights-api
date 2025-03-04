@@ -60,7 +60,7 @@ class CreateRouteResponse(RouteBase):
         from_attributes = True
 
 
-class GetRoutesResponse(RouteBase):
+class GetRouteResponse(RouteBase):
     id: int
     geometry: Optional[dict]
 
