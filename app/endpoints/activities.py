@@ -43,7 +43,7 @@ def get_activities():
 @validate(CreateActivityRequest)
 def create_activity(request: CreateActivityRequest):
     try:
-        with (get_connection() as conn):
+        with get_connection() as conn:
             query = '''
                 INSERT INTO activity_log
                 (title, description, time_started, time_ended)
@@ -125,10 +125,9 @@ def get_activity(activity_id):
                 return jsonify({
                     'data': GetActivityResponse(**data).model_dump(),
                 }), 200
-            else:
-                return jsonify({
-                    'error': 'Activity not found'
-                }), 404
+            return jsonify({
+                'error': 'Activity not found'
+            }), 404
 
     except Exception as e:
         logger.error(f'Failed to get Activity from database for activity_id={activity_id}', e)
@@ -165,10 +164,9 @@ def get_activity_route(activity_id, route_id):
                 return jsonify({
                     'data': GetRouteResponse(**data).model_dump(),
                 }), 200
-            else:
-                return jsonify({
-                    'error': 'Route not found'
-                }), 404
+            return jsonify({
+                'error': 'Route not found'
+            }), 404
 
     except Exception as e:
         logger.error(f'Failed to get route from database for activity_id={activity_id} and route_id={route_id}', e)
@@ -250,10 +248,9 @@ def get_activity_route_stats(activity_id, route_id):
                 return jsonify({
                     'data': GetRouteStatsResponse(**data).model_dump(),
                 }), 200
-            else:
-                return jsonify({
-                    'error': 'Route not found'
-                }), 404
+            return jsonify({
+                'error': 'Route not found'
+            }), 404
 
     except Exception as e:
         logger.error(f'Failed to get route from database for activity_id={activity_id} and route_id={route_id}', e)

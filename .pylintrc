@@ -11,7 +11,8 @@ disable=C0111,  # allow no doc string
        C0114,   # allow no module doc string
        C0115,   # allow no class doc string
        C0116,   # allow no function doc string
-       W0718    # allow broad exception catching
+       W0718,   # allow broad exception catching
+       R0903    # allow minimal public methods
 
 [FORMAT]
 max-line-length=120

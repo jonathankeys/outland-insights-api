@@ -32,6 +32,7 @@ pylint==3.3.4
 pylint-flask==0.6
 pylint-flask-sqlalchemy==0.2.0
 pylint-plugin-utils==0.8.2
+pylint-quotes==0.2.3
 python-decouple==3.8
 PyYAML==6.0.2
 SQLAlchemy==2.0.37
