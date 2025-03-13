@@ -66,3 +66,14 @@ class GetRouteResponse(RouteBase):
 
     class Config:
         from_attributes = True
+
+
+class GetRouteStatsResponse(RouteBase):
+    id: int
+    distance: float
+    min_elevation: int
+    max_elevation: int
+    total_elevation_gain: int
+
+    class Config:
+        from_attributes = True

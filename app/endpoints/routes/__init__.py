@@ -137,4 +137,5 @@ def insert_route(db_session, name, description, points):
         params[f'time{i}'] = timestamp
 
     result = db_session.execute(text(query), params)
+    db_session.commit()
     return result.mappings().first()
